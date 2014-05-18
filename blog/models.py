@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 from django.db import models
 from django.conf import settings as site_settings
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils.translation import ugettext, ugettext_lazy as _
+
+from django.contrib.contenttypes.models import ContentType
 
 from blog import settings
 
@@ -25,11 +28,6 @@ from datetime import datetime
 if settings.USE_TAGS:
     class BlogPostTag(TaggedItemBase):
         content_object = ParentalKey('blog.BlogPost', related_name='tagged_items')
-
-if settings.USE_CATEGORIES:
-    class BlogCategory(Page):
-        subpage_types = None
-
 
 class BlogPost(Page):
     content = RichTextField(blank=True)
@@ -75,7 +73,42 @@ if settings.USE_CATEGORIES:
 if settings.USE_TAGS:
     BlogPost.promote_panels = Page.promote_panels + [ FieldPanel('tags'), ]
 
-class BlogType(Page):
+class BlogIndexBase(Page):
+    is_abstract = True
+
+    template = "blog/blog_index.html"
+
+    def get_context(self, request):
+        # Get blogs
+        posts = self.get_posts(request)
+
+        # Filter by tag
+        tag = request.GET.get('tag')
+        if tag:
+            posts = posts.filter(tags__name=tag)
+
+        return posts
+
+        # Pagination
+        page = request.GET.get('page')
+        paginator = Paginator(posts, settings.POSTS_PER_PAGE)
+        try:
+            posts = paginator.page(page)
+        except PageNotAnInteger:
+            posts = paginator.page(1)
+        except EmptyPage:
+            posts = paginator.page(paginator.num_pages)
+
+        # Update template context
+        context = super(BlogType, self).get_context(request)
+        context['posts'] = posts
+        return context
+
+    class Meta:
+        abstract = True
+
+
+class BlogType(BlogIndexBase):
     subpage_types = ['blog.BlogPost']
     if settings.USE_CATEGORIES:
         subpage_types += ['blog.BlogCategory']
@@ -85,10 +118,10 @@ class BlogType(Page):
             # request is for a child of this page
             child_path = '/'.join(path_components+[''])
 
-            try:
+            try: # try posts or first level categories
                 subpage = self.get_children().get(url_path=self.url_path+child_path)
-            except Page.DoesNotExist:
-                raise Http404
+            except Page.DoesNotExist: # use Page's route to get deeper categories
+                return super(BlogType,self).route(request,path_components)
 
             return subpage.specific.route(request, None)
 
@@ -98,3 +131,13 @@ class BlogType(Page):
                 return self.serve(request)
             else:
                 raise Http404
+
+    def get_posts(self, request):
+        posts = BlogPost.objects.filter(id__in=self.get_children()).order_by('-date')
+
+if settings.USE_CATEGORIES:
+    class BlogCategory(BlogIndexBase):
+        subpage_types = ['blog.BlogCategory']
+
+        def get_posts(self):
+            return BlogPost.objects.filter(id__in=self.get_parent().get_children(),category=self).order_by('-date')

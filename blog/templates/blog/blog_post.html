@@ -1,3 +1,39 @@
-{% extends 'base.html' %}
+{% extends 'wagtailcore/page.html' %}
 
-Post
+{% load pageurl %}
+
+{% block content %}
+
+{% if self.get_next_sibling or self.get_prev_sibling %}
+<nav class="next_prev_nav">
+{% if self.get_next_sibling %}
+<a href="{% pageurl self.get_next_sibling %}" class="next">&larr; Older </a>
+{% endif %}
+{% if self.get_prev_sibling %}
+<a href="{% pageurl self.get_prev_sibling %}" class="previous">Newer &rarr;</a>
+{% endif %}
+</nav>
+{% endif %}
+
+<h2 class="blog-title">{{self.title}}</h2>
+<cite class="date">{{ self.date|date:"Y F d" }}</cite>
+</header>
+{{ self.content|safe }}
+
+
+{% if self.get_next_sibling or self.get_prev_sibling %}
+<footer>
+{% if self.get_next_sibling or self.get_prev_sibling %}
+<nav class="next_prev_nav">
+{% if self.get_next_sibling %}
+<a href="{% pageurl self.get_next_sibling %}" class="next">&larr; Older </a>
+{% endif %}
+{% if self.get_prev_sibling %}
+<a href="{% pageurl self.get_prev_sibling %}" class="previous">Newer &rarr;</a>
+{% endif %}
+</nav>
+{% endif %}
+</footer>
+{% endif %}
+
+{% endblock %}

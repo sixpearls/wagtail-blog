@@ -1,0 +1,49 @@
+{% extends 'wagtailcore/page.html' %}
+
+{% load pageurl image_tags %}
+
+{% block content %}
+{% if posts.has_next or posts.has_previous %}
+<header>
+<nav class="next_prev_nav">
+{% if posts.has_next %}
+<a href="?page={{posts.next_page_number}}" class="next">&larr; Older </a>
+{% endif %}
+{% if posts.has_previous %}
+<a href="?page={{posts.previous_page_number}}" class="previous">Newer &rarr;</a>
+{% endif %}
+</nav>
+</header>
+{% endif %}
+
+<ul id="post-list">
+{% for post in posts %}
+    <li>
+        <a href="{% pageurl post %}" title="View full post of {{ post.title }}">
+            <header>
+                {% if post.featured_image %}
+                {% image post.featured_image max-150x150 %}
+                {% endif %}
+                <h3 class="blog-title">{{ post.title }}</h3>
+                <cite class="date">{{ post.date|date:"Y F d" }}</cite>
+            </header>
+            <p class="tease">{% if post.description %}{{ post.description|safe|truncatewords_html:"100" }}{% else %} {{ post.content|safe|truncatewords_html:"100"|striptags }} {% endif %}</p>
+        </a>
+    </li>
+{% endfor %}
+</ul>
+
+{% if posts.has_next or posts.has_previous %}
+<footer>
+<nav class="next_prev_nav">
+{% if posts.has_next %}
+<a href="?page={{posts.next_page_number}}" class="next">&larr; Older </a>
+{% endif %}
+{% if posts.has_previous %}
+<a href="?page={{posts.previous_page_number}}" class="previous">Newer &rarr;</a>
+{% endif %}
+</nav>
+</footer>
+{% endif %}
+
+{% endblock %}
