@@ -6,6 +6,9 @@ from django.conf import settings
 DEFAULT_SETTINGS = {
     "DATE_FORMAT": "%Y/%b/", # end with trailing slash.
     "DATE_FUNCTION": 'title', # upper, lower
+    "USE_CATEGORIES": True,
+    "USE_TAGS": True,
+    "USE_FEATURED_IMAGES": True,
 }
 
 USER_SETTINGS = DEFAULT_SETTINGS.copy()

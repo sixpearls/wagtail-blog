@@ -20,10 +20,29 @@ from modelcluster.fields import ParentalKey
 from modelcluster.tags import ClusterTaggableManager
 from taggit.models import Tag, TaggedItemBase
 
+from datetime import datetime
+
+if settings.USE_TAGS:
+    class BlogPostTag(TaggedItemBase):
+        content_object = ParentalKey('blog.BlogPost', related_name='tagged_items')
+
+if settings.USE_CATEGORIES:
+    class BlogCategory(Page):
+        subpage_types = None
+
 
 class BlogPost(Page):
     content = RichTextField(blank=True)
-    date = models.DateField(help_text="The date used while organizing the posts")
+    date = models.DateField(help_text="The date used while organizing the posts",default=datetime.now())
+
+    if settings.USE_FEATURED_IMAGES:
+        featured_image = models.ForeignKey(Image, related_name='+', blank=True, null=True)
+
+    if settings.USE_CATEGORIES:
+        category = models.ForeignKey('blog.BlogCategory', related_name='blog_posts', blank=True, null=True)
+
+    if settings.USE_TAGS:
+        tags = ClusterTaggableManager(through='blog.BlogPostTag', blank=True)
 
     def set_url_path(self, parent):
         """
@@ -35,17 +54,31 @@ class BlogPost(Page):
         if parent:
             self.url_path = parent.url_path + getattr(self.date.strftime(settings.DATE_FORMAT),settings.DATE_FUNCTION)() + self.slug + '/'
         else:
-            # a page without a parent is the tree root, which always has a url_path of '/'
+            # Raise an error?
             self.url_path = '/'
 
-BlogPost.content_panels = [
-    FieldPanel('title', classname="full title"),
-    FieldPanel('content'),
+BlogPost.content_panels = [] + Page.content_panels # need to copy the list, not alias it
+
+if settings.USE_FEATURED_IMAGES:
+    BlogPost.content_panels += [
+        ImageChooserPanel('featured_image'),
+    ]
+
+BlogPost.content_panels += [
     FieldPanel('date'),
+    FieldPanel('content'),
 ]
+
+if settings.USE_CATEGORIES:
+    BlogPost.content_panels += [ PageChooserPanel('category', 'blog.BlogCategory'), ]
+
+if settings.USE_TAGS:
+    BlogPost.promote_panels = Page.promote_panels + [ FieldPanel('tags'), ]
 
 class BlogType(Page):
     subpage_types = ['blog.BlogPost']
+    if settings.USE_CATEGORIES:
+        subpage_types += ['blog.BlogCategory']
 
     def route(self, request, path_components):
         if path_components:
