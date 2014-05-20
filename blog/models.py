@@ -87,8 +87,6 @@ class BlogIndexBase(Page):
         if tag:
             posts = posts.filter(tags__name=tag)
 
-        return posts
-
         # Pagination
         page = request.GET.get('page')
         paginator = Paginator(posts, settings.POSTS_PER_PAGE)
@@ -100,7 +98,7 @@ class BlogIndexBase(Page):
             posts = paginator.page(paginator.num_pages)
 
         # Update template context
-        context = super(BlogType, self).get_context(request)
+        context = super(BlogIndexBase,self).get_context(request)
         context['posts'] = posts
         return context
 
@@ -112,6 +110,7 @@ class BlogType(BlogIndexBase):
     subpage_types = ['blog.BlogPost']
     if settings.USE_CATEGORIES:
         subpage_types += ['blog.BlogCategory']
+    template = BlogIndexBase.template
 
     def route(self, request, path_components):
         if path_components:
@@ -133,11 +132,12 @@ class BlogType(BlogIndexBase):
                 raise Http404
 
     def get_posts(self, request):
-        posts = BlogPost.objects.filter(id__in=self.get_children()).order_by('-date')
+        return BlogPost.objects.filter(id__in=self.get_children()).order_by('-date')
 
 if settings.USE_CATEGORIES:
     class BlogCategory(BlogIndexBase):
         subpage_types = ['blog.BlogCategory']
+        template = BlogIndexBase.template
 
-        def get_posts(self):
+        def get_posts(self, request):
             return BlogPost.objects.filter(id__in=self.get_parent().get_children(),category=self).order_by('-date')
