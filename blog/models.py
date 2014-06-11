@@ -64,7 +64,7 @@ if settings.USE_FEATURED_IMAGES:
 
 BlogPost.content_panels += [
     FieldPanel('date'),
-    FieldPanel('content'),
+    FieldPanel('content', classname="full"),
 ]
 
 if settings.USE_CATEGORIES:

@@ -1,6 +1,6 @@
 {% extends 'wagtailcore/page.html' %}
 
-{% load pageurl %}
+{% load pageurl rich_text %}
 
 {% block content %}
 <header>
@@ -18,7 +18,7 @@
 <h2 class="blog-title">{{self.title}}</h2>
 <cite class="date">{{ self.date|date:"Y F d" }}</cite>
 </header>
-{{ self.content|safe }}
+{{ self.content|richtext }}
 
 
 {% if self.get_next_sibling or self.get_prev_sibling %}

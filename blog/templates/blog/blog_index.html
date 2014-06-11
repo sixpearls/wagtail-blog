@@ -1,6 +1,6 @@
 {% extends 'wagtailcore/page.html' %}
 
-{% load pageurl image_tags %}
+{% load pageurl image_tags rich_text %}
 
 {% block content %}
 {% if posts.has_next or posts.has_previous %}
@@ -27,7 +27,7 @@
                 <h3 class="blog-title">{{ post.title }}</h3>
                 <cite class="date">{{ post.date|date:"Y F d" }}</cite>
             </header>
-            <p class="tease">{% if post.description %}{{ post.description|safe|truncatewords_html:"100" }}{% else %} {{ post.content|safe|truncatewords_html:"100"|striptags }} {% endif %}</p>
+            <p class="tease">{% if post.description %}{{ post.description|richtext|truncatewords_html:"100" }}{% else %} {{ post.content|richtext|truncatewords_html:"100"|striptags }} {% endif %}</p>
         </a>
     </li>
 {% endfor %}
