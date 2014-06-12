@@ -132,7 +132,7 @@ class BlogType(BlogIndexBase):
                 raise Http404
 
     def get_posts(self, request):
-        return BlogPost.objects.filter(id__in=self.get_children()).order_by('-date')
+        return BlogPost.objects.live().filter(id__in=self.get_children()).order_by('-date')
 
 if settings.USE_CATEGORIES:
     class BlogCategory(BlogIndexBase):
