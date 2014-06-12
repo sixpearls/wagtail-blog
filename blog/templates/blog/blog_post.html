@@ -4,13 +4,13 @@
 
 {% block content %}
 <header>
-{% if self.get_next_sibling or self.get_prev_sibling %}
+{% if self.get_next_post or self.get_prev_post %}
 <nav class="next_prev_nav">
-{% if self.get_next_sibling %}
-<a href="{% pageurl self.get_next_sibling %}" class="next">&larr; Older </a>
+{% if self.get_next_post %}
+<a href="{% pageurl self.get_next_post %}" class="next">&larr; Older </a>
 {% endif %}
-{% if self.get_prev_sibling %}
-<a href="{% pageurl self.get_prev_sibling %}" class="previous">Newer &rarr;</a>
+{% if self.get_prev_post %}
+<a href="{% pageurl self.get_prev_post %}" class="previous">Newer &rarr;</a>
 {% endif %}
 </nav>
 {% endif %}
@@ -23,13 +23,13 @@
 
 {% if self.get_next_sibling or self.get_prev_sibling %}
 <footer>
-{% if self.get_next_sibling or self.get_prev_sibling %}
+{% if self.get_next_post or self.get_prev_post %}
 <nav class="next_prev_nav">
-{% if self.get_next_sibling %}
-<a href="{% pageurl self.get_next_sibling %}" class="next">&larr; Older </a>
+{% if self.get_next_post %}
+<a href="{% pageurl self.get_next_post %}" class="next">&larr; Older </a>
 {% endif %}
-{% if self.get_prev_sibling %}
-<a href="{% pageurl self.get_prev_sibling %}" class="previous">Newer &rarr;</a>
+{% if self.get_prev_post %}
+<a href="{% pageurl self.get_prev_post %}" class="previous">Newer &rarr;</a>
 {% endif %}
 </nav>
 {% endif %}

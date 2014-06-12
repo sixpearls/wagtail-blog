@@ -55,6 +55,38 @@ class BlogPost(Page):
             # Raise an error?
             self.url_path = '/'
 
+    def get_siblings(self, inclusive=True):
+        return BlogPost.objects.sibling_of(self, inclusive).live().order_by('-date')
+
+    def get_next_post(self):
+        """
+        :returns:
+
+            The next node's sibling, or None if it was the rightmost
+            sibling.
+        """
+        siblings = self.get_siblings()
+        ids = [obj.pk for obj in siblings]
+        if self.pk in ids:
+            idx = ids.index(self.pk)
+            if idx < len(siblings) - 1:
+                return siblings[idx + 1]
+
+    def get_prev_post(self):
+        """
+        :returns:
+
+            The previous node's sibling, or None if it was the leftmost
+            sibling.
+        """
+        siblings = self.get_siblings()
+        ids = [obj.pk for obj in siblings]
+        if self.pk in ids:
+            idx = ids.index(self.pk)
+            if idx > 0:
+                return siblings[idx - 1]
+
+
 BlogPost.content_panels = [] + Page.content_panels # need to copy the list, not alias it
 
 if settings.USE_FEATURED_IMAGES:
@@ -102,6 +134,9 @@ class BlogIndexBase(Page):
         context['posts'] = posts
         return context
 
+    def get_posts(self, request=None):
+        return BlogPost.objects.descendant_of(self, False).live().order_by('-date')
+
     class Meta:
         abstract = True
 
@@ -131,13 +166,7 @@ class BlogType(BlogIndexBase):
             else:
                 raise Http404
 
-    def get_posts(self, request):
-        return BlogPost.objects.live().filter(id__in=self.get_children()).order_by('-date')
-
 if settings.USE_CATEGORIES:
     class BlogCategory(BlogIndexBase):
         subpage_types = ['blog.BlogCategory']
         template = BlogIndexBase.template
-
-        def get_posts(self, request):
-            return BlogPost.objects.filter(id__in=self.get_parent().get_children(),category=self).order_by('-date')
