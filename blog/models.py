@@ -58,6 +58,8 @@ class BlogPost(Page):
     def get_siblings(self, inclusive=True):
         return BlogPost.objects.sibling_of(self, inclusive).live().order_by('-date')
 
+    # TODO: get next/prev by tag or category?
+
     def get_next_post(self):
         """
         :returns:
@@ -148,6 +150,7 @@ class BlogType(BlogIndexBase):
     template = BlogIndexBase.template
 
     def route(self, request, path_components):
+        # TODO: update to reflect wagtail changes
         if path_components:
             # request is for a child of this page
             child_path = '/'.join(path_components+[''])
@@ -168,5 +171,6 @@ class BlogType(BlogIndexBase):
 
 if settings.USE_CATEGORIES:
     class BlogCategory(BlogIndexBase):
+        # TODO: 
         subpage_types = ['blog.BlogCategory']
         template = BlogIndexBase.template
