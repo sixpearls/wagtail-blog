@@ -10,6 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from blog import settings
 
 from wagtail.wagtailcore.models import Page, Orderable
+from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailcore.fields import RichTextField
 from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, \
     InlinePanel, PageChooserPanel
@@ -30,14 +31,18 @@ if settings.USE_TAGS:
         content_object = ParentalKey('blog.BlogPost', related_name='tagged_items')
 
 class BlogPost(Page):
-    content = RichTextField(blank=True)
     date = models.DateField(help_text="The date used while organizing the posts",default=datetime.now())
 
+    if settings.USE_STREAM_FIELD:
+        pass
+    else:
+        content = RichTextField(blank=True)
+
     if settings.USE_FEATURED_IMAGES:
-        featured_image = models.ForeignKey(Image, related_name='+', blank=True, null=True)
+        featured_image = models.ForeignKey(Image, related_name='+', blank=True, null=True, on_delete=models.SET_NULL)
 
     if settings.USE_CATEGORIES:
-        category = models.ForeignKey('blog.BlogCategory', related_name='blog_posts', blank=True, null=True)
+        category = models.ForeignKey('blog.BlogCategory', related_name='blog_posts', blank=True, null=True, on_delete=models.SET_NULL)
 
     if settings.USE_TAGS:
         tags = ClusterTaggableManager(through='blog.BlogPostTag', blank=True)
@@ -136,6 +141,7 @@ class BlogIndexBase(Page):
         context['posts'] = posts
         return context
 
+    # TODO: filter posts that have private tag, type, or category
     def get_posts(self, request=None):
         return BlogPost.objects.descendant_of(self, False).live().order_by('-date')
 
@@ -165,12 +171,22 @@ class BlogType(BlogIndexBase):
         else:
             # request is for this very page
             if self.live:
-                return self.serve(request)
+                return RouteResult(self)
             else:
                 raise Http404
 
 if settings.USE_CATEGORIES:
     class BlogCategory(BlogIndexBase):
-        # TODO: 
         subpage_types = ['blog.BlogCategory']
         template = BlogIndexBase.template
+
+        def get_posts(self, request=None):
+            return self.blog_posts.live().order_by('-date')
+
+if settings.USE_TAGS:
+    class BlogCategory(BlogIndexBase):
+        subpage_types = ['blog.BlogCategory']
+        template = BlogIndexBase.template
+
+        def get_posts(self, request=None):
+            return self.blog_posts.live().order_by('-date')
