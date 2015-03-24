@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('page_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='wagtailcore.Page')),
                 ('content', wagtail.wagtailcore.fields.RichTextField(blank=True)),
-                ('date', models.DateField(default=datetime.now(), help_text=b'The date used while organizing the posts')),
+                ('date', models.DateField(default=datetime.datetime.now(), help_text=b'The date used while organizing the posts')),
                 ('category', models.ForeignKey(related_name='blog_posts', blank=True, to='blog.BlogCategory', null=True)),
                 ('featured_image', models.ForeignKey(related_name='+', blank=True, to='wagtailimages.Image', null=True)),
             ],

@@ -9,16 +9,13 @@ from django.contrib.contenttypes.models import ContentType
 
 from blog import settings
 
-from wagtail.wagtailcore.models import Page, Orderable
+from wagtail.wagtailcore.models import Page
 from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailcore.fields import RichTextField
 from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, \
     InlinePanel, PageChooserPanel
 from wagtail.wagtailimages.edit_handlers import ImageChooserPanel
 from wagtail.wagtailimages.models import Image
-from wagtail.wagtaildocs.edit_handlers import DocumentChooserPanel
-from wagtail.wagtailsnippets.edit_handlers import SnippetChooserPanel
-from wagtail.wagtailsnippets.models import register_snippet
 
 from modelcluster.fields import ParentalKey
 from modelcluster.tags import ClusterTaggableManager
@@ -184,9 +181,4 @@ if settings.USE_CATEGORIES:
             return self.blog_posts.live().order_by('-date')
 
 if settings.USE_TAGS:
-    class BlogCategory(BlogIndexBase):
-        subpage_types = ['blog.BlogCategory']
-        template = BlogIndexBase.template
-
-        def get_posts(self, request=None):
-            return self.blog_posts.live().order_by('-date')
+    pass
