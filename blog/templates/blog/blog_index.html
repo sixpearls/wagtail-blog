@@ -7,10 +7,10 @@
 <header>
 <nav class="next_prev_nav">
 {% if posts.has_next %}
-<a href="?page={{posts.next_page_number}}" class="next">&larr; Older </a>
+<a href="?page={{posts.next_page_number}}{{ page_url_querystring }}" class="next">&larr; Older </a>
 {% endif %}
 {% if posts.has_previous %}
-<a href="?page={{posts.previous_page_number}}" class="previous">Newer &rarr;</a>
+<a href="?page={{posts.previous_page_number}}{{ page_url_querystring }}" class="previous">Newer &rarr;</a>
 {% endif %}
 </nav>
 </header>
@@ -19,7 +19,7 @@
 <ul id="post-list">
 {% for post in posts %}
     <li>
-        <a href="{% pageurl post %}" title="View full post of {{ post.title }}">
+        <a href="{% pageurl post %}{{ post_url_querystring }}" title="View full post of {{ post.title }}">
             <header>
                 {% if post.featured_image %}
                 {% image post.featured_image max-150x150 %}
@@ -37,10 +37,10 @@
 <footer>
 <nav class="next_prev_nav">
 {% if posts.has_next %}
-<a href="?page={{posts.next_page_number}}" class="next">&larr; Older </a>
+<a href="?page={{posts.next_page_number}}{{ page_url_querystring }}" class="next">&larr; Older </a>
 {% endif %}
 {% if posts.has_previous %}
-<a href="?page={{posts.previous_page_number}}" class="previous">Newer &rarr;</a>
+<a href="?page={{posts.previous_page_number}}{{ page_url_querystring }}" class="previous">Newer &rarr;</a>
 {% endif %}
 </nav>
 </footer>

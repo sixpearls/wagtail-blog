@@ -4,6 +4,8 @@ from django.db import models
 from django.conf import settings as site_settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils.translation import ugettext, ugettext_lazy as _
+from django.http import QueryDict
+from django.utils.safestring import mark_safe
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -22,10 +24,25 @@ from modelcluster.tags import ClusterTaggableManager
 from taggit.models import Tag, TaggedItemBase
 
 from datetime import datetime
+from urlparse import urlparse
+
+CONTEXT_POST_QUERYSTRING_KEY = 'post_url_querystring'
+CONTEXT_PAGE_QUERYSTRING_KEY = 'page_url_querystring'
 
 if settings.USE_TAGS:
     class BlogPostTag(TaggedItemBase):
         content_object = ParentalKey('blog.BlogPost', related_name='tagged_items')
+
+def update_context_querystring(context,context_key,first_arg=True,**kwargs):
+    query = QueryDict(urlparse(context.get(context_key,'')).query).copy()
+    query.update(kwargs)
+    if first_arg:
+        lead_char = '?'
+    else:
+        lead_char = '&'
+    if query:
+        context[context_key] = mark_safe(lead_char + query.urlencode())
+    return context
 
 class BlogPost(Page):
     date = models.DateField(help_text="The date used while organizing the posts",default=datetime.now())
@@ -60,36 +77,32 @@ class BlogPost(Page):
     def get_siblings(self, inclusive=True):
         return BlogPost.objects.sibling_of(self, inclusive).live().order_by('-date')
 
-    # TODO: get next/prev by tag or category?
-
-    def get_next_post(self):
-        """
-        :returns:
-
-            The next node's sibling, or None if it was the rightmost
-            sibling.
-        """
+    def get_context(self, request):
+        context = super(BlogPost, self).get_context(request)
         siblings = self.get_siblings()
+
+        tag = None
+        category = None
+        if settings.USE_TAGS:
+            tag = request.GET.get('tag')
+        if settings.USE_CATEGORIES:
+            category = request.GET.get('category')
+
+        if tag:
+            siblings = siblings.filter(tags__name=tag)
+            update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=True,tag=tag)
+        elif category:
+            siblings = siblings.filter(category__slug=category)
+            update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=True,category=category)
+
         ids = [obj.pk for obj in siblings]
         if self.pk in ids:
             idx = ids.index(self.pk)
             if idx < len(siblings) - 1:
-                return siblings[idx + 1]
-
-    def get_prev_post(self):
-        """
-        :returns:
-
-            The previous node's sibling, or None if it was the leftmost
-            sibling.
-        """
-        siblings = self.get_siblings()
-        ids = [obj.pk for obj in siblings]
-        if self.pk in ids:
-            idx = ids.index(self.pk)
+                context['next_post'] = siblings[idx + 1]
             if idx > 0:
-                return siblings[idx - 1]
-
+                context['prev_post'] = siblings[idx - 1]
+        return context
 
 BlogPost.content_panels = [] + Page.content_panels # need to copy the list, not alias it
 
@@ -115,13 +128,8 @@ class BlogIndexBase(Page):
     template = "blog/blog_index.html"
 
     def get_context(self, request):
-        # Get blogs
+        context = super(BlogIndexBase,self).get_context(request)
         posts = self.get_posts(request)
-
-        # Filter by tag
-        tag = request.GET.get('tag')
-        if tag:
-            posts = posts.filter(tags__name=tag)
 
         # Pagination
         page = request.GET.get('page')
@@ -134,7 +142,6 @@ class BlogIndexBase(Page):
             posts = paginator.page(paginator.num_pages)
 
         # Update template context
-        context = super(BlogIndexBase,self).get_context(request)
         context['posts'] = posts
         return context
 
@@ -152,8 +159,23 @@ class BlogType(BlogIndexBase):
         subpage_types += ['blog.BlogCategory']
     template = BlogIndexBase.template
 
+    if settings.USE_TAGS:
+        def get_posts(self, request=None):
+            posts = super(BlogType,self).get_posts(request)
+            tag = request.GET.get('tag')
+            if tag:
+                posts = posts.filter(tags__name=tag)
+            return posts
+
+        def get_context(self, request):
+            context = super(BlogType,self).get_context(request)
+            tag = request.GET.get('tag')
+            if tag:
+                update_context_querystring(context,CONTEXT_PAGE_QUERYSTRING_KEY,first_arg=False,tag=tag)
+                update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=True,tag=tag)
+            return context
+
     def route(self, request, path_components):
-        # TODO: update to reflect wagtail changes
         if path_components:
             # request is for a child of this page
             child_path = '/'.join(path_components+[''])
@@ -177,8 +199,11 @@ if settings.USE_CATEGORIES:
         subpage_types = ['blog.BlogCategory']
         template = BlogIndexBase.template
 
-        def get_posts(self, request=None):
-            return self.blog_posts.live().order_by('-date')
+        def get_context(self, request):
+            context = super(BlogCategory,self).get_context(request)
+            update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=True,category=self.slug)
+            return context
 
-if settings.USE_TAGS:
-    pass
+        def get_posts(self, request=None):
+            return BlogPost.objects.filter(category=self).live().order_by('-date')
+
