@@ -6,16 +6,15 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils.translation import ugettext, ugettext_lazy as _
 from django.http import QueryDict
 from django.utils.safestring import mark_safe
-
-from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Group
 
 from blog import settings
 
-from wagtail.wagtailcore.models import Page
+from wagtail.wagtailcore.models import Page, PageManager
 from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailcore.fields import RichTextField
-from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, \
-    InlinePanel, PageChooserPanel
+from wagtail.wagtailadmin.edit_handlers import FieldPanel, FieldRowPanel, \
+    InlinePanel, PageChooserPanel, BaseChooserPanel
 from wagtail.wagtailimages.edit_handlers import ImageChooserPanel
 from wagtail.wagtailimages.models import Image
 
@@ -80,6 +79,7 @@ class BlogPost(Page):
     def get_context(self, request):
         context = super(BlogPost, self).get_context(request)
         siblings = self.get_siblings()
+        #TODO: some kind of view restriction filter
 
         tag = None
         category = None
@@ -128,7 +128,9 @@ class BlogIndexBase(Page):
     template = "blog/blog_index.html"
 
     def get_context(self, request):
+
         context = super(BlogIndexBase,self).get_context(request)
+
         posts = self.get_posts(request)
 
         # Pagination
@@ -145,7 +147,7 @@ class BlogIndexBase(Page):
         context['posts'] = posts
         return context
 
-    # TODO: filter posts that have private tag, type, or category
+    # TODO: filter posts that have a restriction or have restricted type/category
     def get_posts(self, request=None):
         return BlogPost.objects.descendant_of(self, False).live().order_by('-date')
 
@@ -207,3 +209,75 @@ if settings.USE_CATEGORIES:
         def get_posts(self, request=None):
             return BlogPost.objects.filter(category=self).live().order_by('-date')
 
+class BaseGroupChooserPanel(BaseChooserPanel):
+    object_type_name = "group"
+
+class GroupChooserPanel(object):
+    def __init__(self, field_name, page_type=None):
+        self.field_name = field_name
+
+    def bind_to_model(self, model):
+        return type(str('_GroupChooserPanel'), (BaseGroupChooserPanel,), {
+            'model': model,
+            'field_name': self.field_name,
+        })
+
+class PageGroupViewRestriction(models.Model):
+    page = ParentalKey('wagtailcore.Page', related_name='view_groups')
+    permitted_group = models.ForeignKey(Group, related_name='page_view_authorization')
+    completely_hidden = models.BooleanField(default=False, help_text=_('Check to prevent users not in the permitted group from seeing this at all'))
+
+Page.settings_panels += [
+    InlinePanel('view_groups',label="Restrict view to the following groups",
+        panels = [
+            GroupChooserPanel('permitted_group'),
+            FieldPanel('completely_hidden'),
+    ]),
+]
+
+def build_ancestor_queue(pages):
+    ancestorQ = models.Q()
+    for page in pages:
+        ancestorQ = ancestorQ|models.Q(path__startswith=page.path)
+    return ancestorQ
+
+def explicit_unlistable(self,user=None):
+    unlistable_pages = self.get_queryset().filter(view_groups__completely_hidden=True)
+    if user is not None:
+        unlistable_pages = unlistable_pages.exclude(view_groups__permitted_group__in=user.groups.all())
+    return unlistable_pages.distinct()
+
+def explicit_unviewable(self,user=None):
+    unviewable_pages = self.get_queryset().filter(view_groups__isnull=False)
+    if user is not None:
+        unviewable_pages = unviewable_pages.exclude(view_groups__permitted_group__in=user.groups.all())
+    return unviewable_pages.distinct()
+
+def listable(self,user=None):
+    unlistable_pages = Page.objects.explicit_unlistable(user)
+    ancestorQ = build_ancestor_queue(unlistable_pages)
+    return self.get_queryset().exclude(ancestorQ)
+
+def unlistable(self,user=None):
+    unlistable_pages = Page.objects.explicit_unlistable(user)
+    ancestorQ = build_ancestor_queue(unlistable_pages)
+    return self.get_queryset().filter(ancestorQ)
+
+def viewable(self,user=None):
+    unviewable_pages = Page.objects.explicit_unviewable(user)
+    ancestorQ = build_ancestor_queue(unviewable_pages)
+    return self.get_queryset().exclude(ancestorQ)
+
+def unviewable(self,user=None):
+    unviewable_pages = Page.objects.explicit_unviewable(user)
+    ancestorQ = build_ancestor_queue(unviewable_pages)
+    return self.get_queryset().filter(ancestorQ)
+
+PageManager.explicit_unlistable = explicit_unlistable
+PageManager.explicit_unviewable = explicit_unviewable
+
+PageManager.listable = listable
+PageManager.viewable = viewable
+
+PageManager.unlistable = unlistable
+PageManager.unviewable = unviewable
