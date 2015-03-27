@@ -104,6 +104,12 @@ class BlogPost(Page):
                 context['prev_post'] = siblings[idx - 1]
         return context
 
+    def check_restrictions(self,user=None):
+        return self in Page.objects.viewable(user)
+
+    # TODO: validate category is of same type as post
+    # TODO: validate group authorization is stricter than inherited group authorization?
+
 BlogPost.content_panels = [] + Page.content_panels # need to copy the list, not alias it
 
 if settings.USE_FEATURED_IMAGES:
@@ -147,9 +153,17 @@ class BlogIndexBase(Page):
         context['posts'] = posts
         return context
 
+    def serve_restricted_view(self):
+        return
+
     # TODO: filter posts that have a restriction or have restricted type/category
     def get_posts(self, request=None):
-        return BlogPost.objects.descendant_of(self, False).live().order_by('-date')
+        posts = BlogPost.objects.descendant_of(self, False).live().order_by('-date')
+        user = None
+        if request.user.is_authenticated():
+            user = request.user
+        posts = posts.listable(user)
+        return posts
 
     class Meta:
         abstract = True
@@ -207,7 +221,12 @@ if settings.USE_CATEGORIES:
             return context
 
         def get_posts(self, request=None):
-            return BlogPost.objects.filter(category=self).live().order_by('-date')
+            posts = BlogPost.objects.filter(category=self).live().order_by('-date')
+            user = None
+            if request.user.is_authenticated():
+                user = request.user
+            posts = posts.listable(user)
+            return posts
 
 class BaseGroupChooserPanel(BaseChooserPanel):
     object_type_name = "group"
@@ -222,6 +241,9 @@ class GroupChooserPanel(object):
             'field_name': self.field_name,
         })
 
+# TODO: admin interface shows inherited group view restriction
+# TODO: customizable group view restriction interface
+
 class PageGroupViewRestriction(models.Model):
     page = ParentalKey('wagtailcore.Page', related_name='view_groups')
     permitted_group = models.ForeignKey(Group, related_name='page_view_authorization')
@@ -234,6 +256,8 @@ Page.settings_panels += [
             FieldPanel('completely_hidden'),
     ]),
 ]
+
+
 
 def build_ancestor_queue(pages):
     ancestorQ = models.Q()
