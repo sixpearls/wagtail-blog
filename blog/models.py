@@ -24,7 +24,12 @@ from modelcluster.tags import ClusterTaggableManager
 from taggit.models import Tag, TaggedItemBase
 
 from datetime import datetime
-from urlparse import urlparse
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+    
 
 CONTEXT_POST_QUERYSTRING_KEY = 'post_url_querystring'
 CONTEXT_PAGE_QUERYSTRING_KEY = 'page_url_querystring'
