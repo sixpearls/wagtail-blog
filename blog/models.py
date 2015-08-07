@@ -13,9 +13,11 @@ from blog import settings
 
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailcore.url_routing import RouteResult
-from wagtail.wagtailcore.fields import RichTextField
-from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, \
-    InlinePanel, PageChooserPanel
+from wagtail.wagtailcore.fields import RichTextField, StreamField
+
+from .blocks import StoryBlock
+
+from wagtail.wagtailadmin.edit_handlers import FieldPanel, PageChooserPanel
 from wagtail.wagtailimages.edit_handlers import ImageChooserPanel
 from wagtail.wagtailimages.models import Image
 
@@ -29,7 +31,7 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-    
+
 
 CONTEXT_POST_QUERYSTRING_KEY = 'post_url_querystring'
 CONTEXT_PAGE_QUERYSTRING_KEY = 'page_url_querystring'
@@ -52,8 +54,8 @@ def update_context_querystring(context,context_key,first_arg=True,**kwargs):
 class BlogPost(Page):
     date = models.DateField(help_text="The date used while organizing the posts",default=datetime.now())
 
-    if settings.USE_STREAM_FIELD:
-        pass
+    if settings.USE_STREAMFIELD:
+        content = StreamField(StoryBlock())
     else:
         content = RichTextField(blank=True)
 
@@ -118,8 +120,13 @@ if settings.USE_FEATURED_IMAGES:
 
 BlogPost.content_panels += [
     FieldPanel('date'),
-    FieldPanel('content', classname="full"),
 ]
+
+if settings.USE_STREAMFIELD:
+    from wagtail.wagtailadmin.edit_handlers import StreamFieldPanel
+    BlogPost.content_panels += [ StreamFieldPanel('content'), ]
+else:
+    BlogPost.content_panels += [ FieldPanel('content', classname="full"), ]
 
 if settings.USE_CATEGORIES:
     BlogPost.content_panels += [ PageChooserPanel('category', 'blog.BlogCategory'), ]

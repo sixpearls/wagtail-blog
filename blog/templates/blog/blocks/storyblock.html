@@ -1,0 +1,63 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+
+    <section class="body-copy stream-field container">
+    {% for child in self %}
+        {% if child.block_type == 'h2' %}
+            <h2>{{ child }}</h2>
+        {% elif child.block_type == 'h3' %}
+            <h3>{{ child }}</h3>
+        {% elif child.block_type == 'h4' %}
+            <h4>{{ child }}</h4>
+        {% elif child.block_type == 'intro' %}
+            <div class="intro drop-cap">{{ child }}</div>
+        {% elif child.block_type == 'pullquote' %}
+            <blockquote class="pull-quote">
+                <p>{{ child.value.quote }}</p>
+                <cite> – {{ child.value.attribution }}</cite>
+            </blockquote>
+        {% elif child.block_type == 'testimonial' %}
+            <blockquote class="pull-quote">
+                <p>{{ child.value.quote }}</p>
+                <cite> – {{ child.value.attribution }}</cite>
+            </div>
+        {% elif child.block_type == 'bustout' %}
+            <div class="bustout clearfix">
+                {% image child.value.image width-1280 as blockimage %}
+                <img src="{{ blockimage.url }}" width="{{ blockimage.width }}" height="{{ blockimage.height }}" alt="{{ blockimage.alt }}" />
+
+                <div class="bustout-text">
+                    {{ child.value.text|richtext }}
+                </div>
+            </div>
+        {% elif child.block_type == 'aligned_image' %}
+            <div class="{% if child.value.alignment == "left" or child.value.alignment == "right" %}align-{{ child.value.alignment }}{% else %}{{ child.value.alignment }}-width{% endif %}">
+                <div class="img-holder">
+                    {% if child.value.alignment == "left" or child.value.alignment == "right" %}
+                        {% image child.value.image width-400 as blockimage %}
+                    {% elif child.value.alignment == "half" %}
+                        {% image child.value.image width-800 as blockimage %}
+                    {% else %}
+                        {% image child.value.image width-1280 as blockimage %}
+                    {% endif %}
+
+                    <div {% if child.value.attribution %}class="img-credit"{% endif %}>
+                        <img src="{{ blockimage.url }}" width="{{ blockimage.width }}" height="{{ blockimage.height }}" alt="{{ blockimage.alt }}" />
+                        {% if child.value.attribution %}<p class="credit">{{ child.value.attribution }}</p>{% endif %}
+                    </div>
+
+                    {% if child.value.caption %}
+                        <p>{{ child.value.caption }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% elif child.block_type == 'raw_html' %}
+            {{ child.value|safe }}
+        {% elif child.block_type == 'embed' %}
+            <div>{{ child }}</div>
+        {% elif child.block_type == 'paragraph' %}
+            {{ child }}
+        {% else %}
+            {{ child }}
+        {% endif %}
+    {% endfor %}
+    </section>

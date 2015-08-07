@@ -1,0 +1,5 @@
+{% if caption or attribution %}<figure {{class_attr}}>{% endif %}
+    <img {{class_attr}}src="{{ rendition.url|escape }}" width="{{ rendition.width }}" height="{{ rendition.height }}"{% if alt_text %} alt="{{ self.alt_text }}"{% endif %}>
+{% if caption %}    <figcaption>{{ caption }}</figcaption>{% endif %}
+{% if attribution %}    <cite>{{ attribution }}</cite>{% endif %}
+{% if caption or attribution %}</figure>{% endif %}
