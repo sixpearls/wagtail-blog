@@ -53,20 +53,41 @@ def update_context_querystring(context,context_key,first_arg=True,**kwargs):
 
 class BlogPost(Page):
     date = models.DateField(help_text="The date used while organizing the posts",default=datetime.now())
+    if 'wagtail.contrib.wagtailapi' in site_settings.INSTALLED_APPS:
+        api_fields = ('date',)
 
     if settings.USE_STREAMFIELD:
         content = StreamField(StoryBlock())
+
+        @property
+        def rendered_content(self):
+            return self.content.__str__()
+
+        if 'wagtail.contrib.wagtailapi' in site_settings.INSTALLED_APPS:
+            api_fields += ('rendered_content',)
+            pass
+
     else:
         content = RichTextField(blank=True)
 
     if settings.USE_FEATURED_IMAGES:
         featured_image = models.ForeignKey(Image, related_name='+', blank=True, null=True, on_delete=models.SET_NULL)
 
+        if 'wagtail.contrib.wagtailapi' in site_settings.INSTALLED_APPS:
+            api_fields += ('featured_image',)
+
     if settings.USE_CATEGORIES:
         category = models.ForeignKey('blog.BlogCategory', related_name='blog_posts', blank=True, null=True, on_delete=models.SET_NULL)
 
+        if 'wagtail.contrib.wagtailapi' in site_settings.INSTALLED_APPS:
+            api_fields += ('category',)
+
     if settings.USE_TAGS:
         tags = ClusterTaggableManager(through='blog.BlogPostTag', blank=True)
+
+        if 'wagtail.contrib.wagtailapi' in site_settings.INSTALLED_APPS:
+            api_fields += ('tags',)
+
 
     def set_url_path(self, parent):
         """
@@ -164,7 +185,6 @@ class BlogIndexBase(Page):
     class Meta:
         abstract = True
 
-
 class BlogType(BlogIndexBase):
     subpage_types = ['blog.BlogPost']
     if settings.USE_CATEGORIES:
@@ -188,6 +208,8 @@ class BlogType(BlogIndexBase):
             return context
 
     def route(self, request, path_components):
+        # TODO: possibly better to use routable mix-in. Also may be better if this handles routing for (child) categories?
+        # also need to create month/day logic.
         if path_components:
             # request is for a child of this page
             child_path = '/'.join(path_components+[''])
@@ -219,3 +241,60 @@ if settings.USE_CATEGORIES:
         def get_posts(self, request=None):
             return BlogPost.objects.filter(category=self).live().order_by('-date')
 
+class AjaxBlogPage(Page):
+    blog_page = models.ForeignKey(BlogType, related_name='ajax_user', blank=True, null=True, on_delete=models.SET_NULL)
+
+    def route(self, request, path_components):
+        result = super(AjaxBlogPage,self).route(request,path_components)
+        if isinstance(result, RouteResult):
+            result_page = result[0]
+            if result_page == self.blog_page or result_page == self or self.blog_page.get_descendants().filter(id__in=[result_page.id]).exists():
+                return RouteResult(self,kwargs={'true_request_page': result_page})
+        return result
+
+    def get_context(self, request, *args, **kwargs):
+        true_request_page = kwargs.pop('true_request_page', None)
+        context = super(AjaxBlogPage, self).get_context(request, *args, **kwargs)
+        if true_request_page:
+            tag = None
+            category = None
+            if settings.USE_TAGS:
+                tag = request.GET.get('tag')
+            if settings.USE_CATEGORIES:
+                if isinstance(true_request_page, BlogCategory):
+                    category = true_request_page
+                else:
+                    category = request.GET.get('category') 
+
+            if isinstance(true_request_page, BlogPost):
+                siblings = true_request_page.get_siblings()
+
+            if tag:
+                update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=False,tag=tag)
+                if isinstance(true_request_page, BlogPost):
+                    siblings = siblings.filter(tags__name=tag)
+                context['taxonomy_name'] = 'tag'
+                context['taxonomy_value'] = tag
+            elif category:
+                update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=False,category=category)
+                if isinstance(true_request_page, BlogPost):
+                    siblings = siblings.filter(category__slug=category)
+                context['taxonomy_name'] = 'category'
+                context['taxonomy_value'] = category
+
+            if isinstance(true_request_page, BlogPost):
+                for i, x in enumerate(siblings):
+                    if x == true_request_page:
+                        offset = i
+            else:
+                offset = 0
+
+            context['offset'] = offset
+            context['limit'] = settings.POSTS_PER_PAGE
+
+            return context
+
+        else:
+            raise Http404 #How did I get here?
+
+AjaxBlogPage.content_panels = Page.content_panels + [ PageChooserPanel('blog_page', 'blog.BlogType'), ]

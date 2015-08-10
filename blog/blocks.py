@@ -81,6 +81,7 @@ class ImageBlock(StructBlock):
         image = value['image']
 
         # Comes from wagtailimages\formats.py Format.image_to_html
+        # TODO: possibly refactor wagtail codebase so Format can return silent-failing rendition 
         try:
             rendition = image.get_rendition(format.filter_spec)
         except SourceImageIOError:

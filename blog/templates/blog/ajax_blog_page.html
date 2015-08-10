@@ -1,0 +1,87 @@
+{% extends 'wagtailcore/page.html' %}
+
+{% block extra_head %}
+{% endblock %}
+
+{% block content %}
+<a href="#" id="load_newer">Load newer</a>
+<ul id="post-list">
+{% for post in posts %}
+
+{% endfor %}
+</ul>
+<a href="#" id="load_older">Load older</a>
+{% endblock %}
+
+{% block javascript %}
+    <script src="{{ STATIC_URL }}blog/js/utemplate.js"></script>
+    <script type="text/html" id="post_tmpl">
+        <li class="post-content">
+            <header>
+                <h1 class="post-title"><%=title%></h3>
+                <cite class="post-date"><%=date%></cite>
+            </header>
+            <%=rendered_content%>
+        </li>
+    </script>
+    <script>
+    var ajax_blog_url = '/api/v1/pages/?type=blog.BlogPost&fields=title,date,rendered_content,featured_image,tags,category{% if taxonomy_name %}&{{taxonomy_name}}={{taxonomy_value}}{% endif %}&limit={{limit}}&offset=';
+    var newer_offset = {{offset}};
+    var older_offset = {{offset}};
+
+    function load_posts(offset) {
+        $.ajax(ajax_blog_url+offset).done(function(data) { 
+
+            post_list = document.getElementById("post-list");
+            for (var i = 0; i < data.pages.length; i++) { 
+                if (offset == newer_offset) {
+                    post_list.innerHTML = tmpl("post_tmpl",data.pages[i]) + post_list.innerHTML;
+                } else {
+                    post_list.innerHTML += tmpl("post_tmpl",data.pages[i]);
+                }
+            }
+
+            if (offset == older_offset) {
+                if (i+offset < data.meta.total_count) {
+                    $("#load_older").unbind().click(function(event) {
+                        event.preventDefault();
+                        load_posts(older_offset+{{limit}});
+                        older_offset += {{limit}};
+                    });
+                } else {
+                    $("#load_older").unbind().click(function(event) {
+                        event.preventDefault(); 
+                    }).hide();
+                }
+            }
+
+            if (offset == newer_offset) {
+                if (newer_offset > 0) {
+                    $("#load_newer").unbind().click(function(event) {
+                        event.preventDefault();
+                        if (newer_offset - {{limit}} < 0) { 
+                            newer_offset = 0;
+                            load_posts(0);
+                        } else {
+                            newer_offset -= {{limit}};
+                        }
+    
+                    });
+                } else {
+                    $("#load_newer").unbind().click(function(event) {
+                        event.preventDefault();
+                    }).hide();
+                }
+            }
+            
+            
+        });
+
+        
+    }
+
+    load_posts({{offset}});
+
+    </script>
+
+{% endblock javascript %}
