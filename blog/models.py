@@ -273,7 +273,7 @@ class AjaxBlogPage(Page):
                 update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=False,tag=tag)
                 if isinstance(true_request_page, BlogPost):
                     siblings = siblings.filter(tags__name=tag)
-                context['taxonomy_name'] = 'tag'
+                context['taxonomy_name'] = 'tags'
                 context['taxonomy_value'] = tag
             elif category:
                 update_context_querystring(context,CONTEXT_POST_QUERYSTRING_KEY,first_arg=False,category=category)

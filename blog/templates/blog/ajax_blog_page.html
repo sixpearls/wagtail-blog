@@ -25,7 +25,7 @@
         </li>
     </script>
     <script>
-    var ajax_blog_url = '/api/v1/pages/?type=blog.BlogPost&fields=title,date,rendered_content,featured_image,tags,category{% if taxonomy_name %}&{{taxonomy_name}}={{taxonomy_value}}{% endif %}&limit={{limit}}&offset=';
+    var ajax_blog_url = '/api/v1/pages/?type=blog.BlogPost&fields=title,date,rendered_content,featured_image,tags,category{% if taxonomy_name %}&{{taxonomy_name}}={{taxonomy_value}}{% endif %}&order=-date&limit={{limit}}&offset=';
     var newer_offset = {{offset}};
     var older_offset = {{offset}};
 
